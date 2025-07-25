@@ -3,6 +3,9 @@ ENV DEBIAN_FRONTEND noninteractive
 
 # install dependencies via apt
 ENV DEBCONF_NOWARNINGS yes
+
+ENV https_proxy 192.168.1.45:7890
+
 RUN set -x && \
   apt-get update -y -qq && \
   apt-get upgrade -y -qq --no-install-recommends && \
