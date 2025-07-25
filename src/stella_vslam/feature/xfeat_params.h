@@ -17,6 +17,7 @@ struct xfeat_params {
                  const unsigned int max_keypoints,
                  const float conf_th,
                  const std::vector<float>& scale_factors = {1.0f});
+    xfeat_params(const std::string& name);
 
     //! Load from YAML
     explicit xfeat_params(const YAML::Node& yaml_node);

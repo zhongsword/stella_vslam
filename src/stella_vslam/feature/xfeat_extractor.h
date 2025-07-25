@@ -4,28 +4,30 @@
 
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
+#include "xfeat_params.h"
 
 namespace stella_vslam {
 namespace feature {
 
-class orb_extractor {
+class xfeat_extractor {
 public:
-    orb_extractor() = delete;
+    xfeat_extractor() = delete;
 
     //! Constructor
-    orb_extractor(const orb_params* orb_params,
+    xfeat_extractor(const xfeat_params* orb_params,
                   const unsigned int min_area,
                   const std::vector<std::vector<float>>& mask_rects = {});
 
     //! Destructor
-    virtual ~orb_extractor() = default;
+    virtual ~xfeat_extractor() = default;
 
     //! Extract keypoints and each descriptor of them
     void extract(const cv::_InputArray& in_image, const cv::_InputArray& in_image_mask,
                  std::vector<cv::KeyPoint>& keypts, const cv::_OutputArray& out_descriptors);
+                 // Extract keypoints and each descriptor of them
 
     //! parameters for ORB extraction
-    const orb_params* orb_params_;
+    const xfeat_params* orb_params_;
 
     //! A vector of keypoint area represents mask area
     //! Each areas are denoted as form of [x_min / cols, x_max / cols, y_min / rows, y_max / rows]
@@ -41,8 +43,6 @@ private:
     //! Create a mask matrix that constructed by rectangles
     void create_rectangle_mask(const unsigned int cols, const unsigned int rows);
 
-    //! Compute image pyramid
-    void compute_image_pyramid(const cv::Mat& image);
 
     //! Compute fast keypoints for cells in each image pyramid
     void compute_fast_keypoints(std::vector<std::vector<cv::KeyPoint>>& all_keypts, const cv::Mat& mask) const;
@@ -52,11 +52,6 @@ private:
                                                    const int min_x, const int max_x, const int min_y, const int max_y,
                                                    const float scale_factor) const;
 
-    //! Compute orientation for each keypoint
-    void compute_orientation(const cv::Mat& image, std::vector<cv::KeyPoint>& keypts) const;
-
-    //! Correct keypoint's position to comply with the scale
-    void correct_keypoint_scale(std::vector<cv::KeyPoint>& keypts_at_level, const unsigned int level) const;
 
     //! Compute the gradient direction of pixel intensity in a circle around the point
     float ic_angle(const cv::Mat& image, const cv::Point2f& point) const;
@@ -74,8 +69,6 @@ private:
     bool mask_is_initialized_ = false;
     cv::Mat rect_mask_;
 
-    //! feature descriptor implementations
-    orb_impl orb_impl_;
 #ifdef USE_CUDA_EFFICIENT_DESCRIPTORS
     cv::Ptr<cv::cuda::HashSIFT> hash_sift_;
 #endif
