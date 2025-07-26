@@ -3,9 +3,14 @@ ENV DEBIAN_FRONTEND noninteractive
 
 # install dependencies via apt
 ENV DEBCONF_NOWARNINGS yes
+RUN apt-get update && \
+    apt-get install -y ca-certificates && \
+    update-ca-certificates
 
-ENV https_proxy 192.168.1.45:7890
-
+RUN sed -i 's|http://.*.ubuntu.com|https://mirrors.tuna.tsinghua.edu.cn|g' \
+    /etc/apt/sources.list && \
+    apt-get update
+    
 RUN set -x && \
   apt-get update -y -qq && \
   apt-get upgrade -y -qq --no-install-recommends && \
@@ -205,4 +210,4 @@ WORKDIR /
 RUN mkdir /stella_vslam
 
 WORKDIR /stella_vslam
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["sleep", "infinity"]
