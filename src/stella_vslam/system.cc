@@ -30,6 +30,7 @@
 #include "stella_vslam/util/yaml.h"
 
 #include <thread>
+#include <opencv2/imgcodecs.hpp>
 
 #include <spdlog/spdlog.h>
 
@@ -295,6 +296,46 @@ bool system::save_map_database(const std::string& path) const {
     bool ok = map_database_io_->save(path, cam_db_, orb_params_db_, map_db_);
     resume_other_threads();
     return ok;
+}
+
+bool system::save_keyframe_images(const std::string& dir_path) const {
+    pause_other_threads();
+    spdlog::debug("save_keyframe_images: {}", dir_path);
+
+    // Create directory if it doesn't exist
+    fs::path dir(dir_path);
+    if (!fs::exists(dir)) {
+        if (!fs::create_directories(dir)) {
+            spdlog::critical("cannot create directory at {}", dir_path);
+            resume_other_threads();
+            return false;
+        }
+    }
+
+    const auto keyfrms = map_db_->get_all_keyframes();
+    int saved_count = 0;
+
+    for (const auto& keyfrm : keyfrms) {
+        if (keyfrm->will_be_erased()) {
+            continue;
+        }
+
+        std::string img_path = (dir / ("keyframe_" + std::to_string(keyfrm->id_) + ".png")).string();
+
+        std::lock_guard<std::mutex> lock(mtx_keyframe_images_);
+        auto it = keyframe_images_.find(keyfrm->id_);
+        if (it != keyframe_images_.end() && !it->second.empty()) {
+            cv::imwrite(img_path, it->second);
+            saved_count++;
+            spdlog::info("Saved keyframe {} image to {}", keyfrm->id_, img_path);
+        } else {
+            spdlog::warn("No image available for keyframe {}", keyfrm->id_);
+        }
+    }
+
+    spdlog::info("Saved {} keyframe images to {}", saved_count, dir_path);
+    resume_other_threads();
+    return true;
 }
 
 const std::shared_ptr<publish::map_publisher> system::get_map_publisher() const {
@@ -577,7 +618,23 @@ std::shared_ptr<Mat44_t> system::feed_RGBD_frame(const cv::Mat& rgb_img, const c
 std::shared_ptr<Mat44_t> system::feed_frame(const data::frame& frm, const cv::Mat& img, const double extraction_time_elapsed_ms) {
     const auto start = std::chrono::system_clock::now();
 
+    // Get number of keyframes before processing this frame
+    const auto num_keyframes_before = map_db_->get_num_keyframes();
+
     const auto cam_pose_wc = tracker_->feed_frame(frm);
+
+    // Check if a new keyframe was created
+    const auto num_keyframes_after = map_db_->get_num_keyframes();
+    if (num_keyframes_after > num_keyframes_before) {
+        // A new keyframe was created, save its image
+        auto last_keyframe = map_db_->get_last_inserted_keyframe();
+        if (last_keyframe) {
+            std::lock_guard<std::mutex> lock(mtx_keyframe_images_);
+            // Store a copy of the image
+            keyframe_images_[last_keyframe->id_] = img.clone();
+            spdlog::debug("Stored image for new keyframe {}", last_keyframe->id_);
+        }
+    }
 
     const auto end = std::chrono::system_clock::now();
     double tracking_time_elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();

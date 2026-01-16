@@ -10,6 +10,7 @@
 #include <mutex>
 #include <atomic>
 #include <memory>
+#include <unordered_map>
 
 #include <opencv2/core/mat.hpp>
 
@@ -84,6 +85,9 @@ public:
 
     //! Save the map database to file
     bool save_map_database(const std::string& path) const;
+
+    //! Save keyframe images to a directory
+    bool save_keyframe_images(const std::string& dir_path) const;
 
     //! Get the map publisher
     const std::shared_ptr<publish::map_publisher> get_map_publisher() const;
@@ -282,8 +286,14 @@ private:
     //! mutex for flags of enable/disable loop detector
     mutable std::mutex mtx_loop_detector_;
 
+    //! mutex for keyframe image storage
+    mutable std::mutex mtx_keyframe_images_;
+
     //! Temporary variables for visualization
     std::vector<cv::KeyPoint> keypts_;
+
+    //! storage for keyframe images (keyframe_id -> image)
+    std::unordered_map<unsigned int, cv::Mat> keyframe_images_;
 };
 
 } // namespace stella_vslam
